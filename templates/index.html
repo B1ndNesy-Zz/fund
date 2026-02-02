@@ -7,17 +7,19 @@
     <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
-            --bg: #0b0f1a;
-            --panel: #141a2a;
-            --panel-light: #1b2338;
-            --accent: #4dc3ff;
-            --up: #ff4d6d;
-            --down: #24d17f;
-            --text: #f5f7ff;
-            --sub: #9aa3b2;
+            --bg: #f5f7fb;
+            --panel: #ffffff;
+            --panel-light: #f9fafc;
+            --accent: #3b82f6;
+            --accent-soft: rgba(59, 130, 246, 0.12);
+            --up: #f97316;
+            --down: #22c55e;
+            --text: #1f2937;
+            --sub: #6b7280;
+            --border: #e5e7eb;
         }
         body {
-            background: radial-gradient(circle at top, rgba(77, 195, 255, 0.15), transparent 50%), var(--bg);
+            background: linear-gradient(180deg, #f5f7fb 0%, #eef2f9 100%);
             color: var(--text);
             font-family: "Segoe UI", "PingFang SC", sans-serif;
         }
@@ -28,22 +30,24 @@
         }
         .panel {
             background: var(--panel);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 16px;
-            padding: 24px;
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 28px;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
         }
         .panel-light {
             background: var(--panel-light);
         }
         .stat-card {
-            padding: 22px;
-            border-radius: 14px;
-            background: linear-gradient(135deg, rgba(77, 195, 255, 0.15), rgba(77, 195, 255, 0.02));
+            padding: 24px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(243, 246, 253, 0.9));
+            border: 1px solid var(--border);
         }
         .stat-label {
             font-size: 0.85rem;
             color: var(--sub);
+            letter-spacing: 0.02em;
         }
         .stat-value {
             font-size: 2rem;
@@ -58,46 +62,49 @@
             align-items: center;
         }
         .toolbar input, .toolbar select {
-            background: var(--panel-light);
-            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: #ffffff;
+            border: 1px solid var(--border);
             color: var(--text);
-            border-radius: 10px;
-            padding: 6px 12px;
+            border-radius: 12px;
+            padding: 8px 12px;
         }
         .table thead th {
             color: var(--sub);
             font-size: 0.85rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            border-bottom: 1px solid var(--border);
             padding-bottom: 12px;
         }
         .table tbody tr {
-            background: rgba(255, 255, 255, 0.02);
+            background: #ffffff;
             border-radius: 12px;
+            box-shadow: 0 6px 16px rgba(15, 23, 42, 0.04);
         }
         .table tbody td {
             border: none;
             vertical-align: middle;
-            padding: 14px 8px;
+            padding: 16px 10px;
         }
         .badge-source {
             font-size: 0.7rem;
             border-radius: 999px;
-            padding: 2px 8px;
-            background: rgba(77, 195, 255, 0.2);
+            padding: 3px 8px;
+            background: var(--accent-soft);
             color: var(--accent);
             margin-left: 6px;
         }
         .form-label { color: var(--sub); font-size: 0.85rem; }
         .btn-accent {
             background: var(--accent);
-            color: #04131f;
+            color: #ffffff;
             border: none;
+            box-shadow: 0 6px 14px rgba(59, 130, 246, 0.25);
         }
-        .btn-accent:hover { background: #6cd0ff; }
+        .btn-accent:hover { background: #2563eb; }
         .status-pill {
             padding: 6px 12px;
-            background: rgba(255, 255, 255, 0.08);
+            background: #ffffff;
             border-radius: 999px;
+            border: 1px solid var(--border);
             color: var(--sub);
             font-size: 0.85rem;
         }
@@ -123,18 +130,21 @@
             }
         }
         .empty-row { color: var(--sub); text-align: center; padding: 24px 0; }
+        .text-secondary { color: var(--sub) !important; }
     </style>
 </head>
 <body>
     <div class="app-shell">
-        <div class="d-flex flex-wrap justify-content-between align-items-center mb-5 gap-3">
-            <div>
-                <h2 class="mb-1">基金估值指挥台</h2>
-                <p class="text-secondary mb-0">一屏掌握实时估值、仓位与收益</p>
-            </div>
-            <div class="toolbar">
-                <span class="status-pill">更新时间：<span id="lastUpdated">--</span></span>
-                <button class="btn btn-sm btn-accent" id="refreshBtn">立即刷新</button>
+        <div class="panel mb-5">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div>
+                    <h2 class="mb-1">基金估值指挥台</h2>
+                    <p class="text-secondary mb-0">一屏掌握实时估值、仓位与收益</p>
+                </div>
+                <div class="toolbar">
+                    <span class="status-pill">更新时间：<span id="lastUpdated">--</span></span>
+                    <button class="btn btn-sm btn-accent" id="refreshBtn">立即刷新</button>
+                </div>
             </div>
         </div>
 
@@ -240,7 +250,7 @@
             <div class="modal-content panel">
                 <div class="modal-header border-0">
                     <h5 class="modal-title" id="chartTitle">净值走势</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <canvas id="fundChart" height="240"></canvas>
@@ -304,7 +314,7 @@
             tbody.innerHTML = filtered.map(item => `
                 <tr>
                     <td>
-                        <button class="btn btn-link text-start text-decoration-none text-light p-0 fw-semibold" onclick="openChart('${item.code}')">
+                        <button class="btn btn-link text-start text-decoration-none text-dark p-0 fw-semibold" onclick="openChart('${item.code}')">
                             ${item.name}
                         </button>
                         <div class="text-secondary small">${item.code}<span class="badge-source">${item.source}</span></div>
@@ -319,7 +329,7 @@
                     <td class="${item.total_profit >= 0 ? 'value-up' : 'value-down'}">${formatMoney(item.total_profit)}</td>
                     <td>${item.update_time || '--'}</td>
                     <td class="text-end">
-                        <button class="btn btn-sm btn-outline-light" onclick="removeFund('${item.code}')">删除</button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="removeFund('${item.code}')">删除</button>
                     </td>
                 </tr>
             `).join('');
