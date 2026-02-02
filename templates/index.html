@@ -22,22 +22,22 @@
             font-family: "Segoe UI", "PingFang SC", sans-serif;
         }
         .app-shell {
-            max-width: 1200px;
+            max-width: 1280px;
             margin: 0 auto;
-            padding: 32px 16px 60px;
+            padding: 40px 20px 80px;
         }
         .panel {
             background: var(--panel);
             border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 16px;
-            padding: 20px;
+            padding: 24px;
             box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
         }
         .panel-light {
             background: var(--panel-light);
         }
         .stat-card {
-            padding: 18px;
+            padding: 22px;
             border-radius: 14px;
             background: linear-gradient(135deg, rgba(77, 195, 255, 0.15), rgba(77, 195, 255, 0.02));
         }
@@ -46,7 +46,7 @@
             color: var(--sub);
         }
         .stat-value {
-            font-size: 1.8rem;
+            font-size: 2rem;
             font-weight: 700;
         }
         .value-up { color: var(--up); }
@@ -54,7 +54,7 @@
         .toolbar {
             display: flex;
             flex-wrap: wrap;
-            gap: 12px;
+            gap: 14px;
             align-items: center;
         }
         .toolbar input, .toolbar select {
@@ -68,6 +68,7 @@
             color: var(--sub);
             font-size: 0.85rem;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 12px;
         }
         .table tbody tr {
             background: rgba(255, 255, 255, 0.02);
@@ -76,6 +77,7 @@
         .table tbody td {
             border: none;
             vertical-align: middle;
+            padding: 14px 8px;
         }
         .badge-source {
             font-size: 0.7rem;
@@ -99,12 +101,33 @@
             color: var(--sub);
             font-size: 0.85rem;
         }
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        .section-subtitle {
+            color: var(--sub);
+            font-size: 0.85rem;
+        }
+        .table-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+        }
+        .table-controls .form-check {
+            margin-top: 6px;
+        }
+        @media (max-width: 992px) {
+            .table-controls {
+                grid-template-columns: 1fr;
+            }
+        }
         .empty-row { color: var(--sub); text-align: center; padding: 24px 0; }
     </style>
 </head>
 <body>
     <div class="app-shell">
-        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-5 gap-3">
             <div>
                 <h2 class="mb-1">基金估值指挥台</h2>
                 <p class="text-secondary mb-0">一屏掌握实时估值、仓位与收益</p>
@@ -115,7 +138,7 @@
             </div>
         </div>
 
-        <div class="row g-3 mb-4">
+        <div class="row g-4 mb-5">
             <div class="col-md-4">
                 <div class="stat-card">
                     <div class="stat-label">持仓总市值</div>
@@ -136,12 +159,17 @@
             </div>
         </div>
 
-        <div class="row g-3">
+        <div class="row g-4">
             <div class="col-lg-8">
                 <div class="panel">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-                        <h5 class="mb-0">持仓列表</h5>
-                        <div class="toolbar">
+                    <div class="mb-4">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                            <div>
+                                <div class="section-title">持仓列表</div>
+                                <div class="section-subtitle">筛选与自动刷新设置</div>
+                            </div>
+                        </div>
+                        <div class="table-controls">
                             <input type="text" id="searchInput" placeholder="搜索基金名称/代码">
                             <select id="filterSelect">
                                 <option value="all">全部</option>
