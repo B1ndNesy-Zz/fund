@@ -235,11 +235,30 @@
         </div>
     </div>
 
+    <div class="modal fade" id="chartModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content panel">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title" id="chartTitle">净值走势</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <canvas id="fundChart" height="240"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <script>
         let cache = [];
         let timer = 30;
         let refreshInterval = 30;
         let autoRefresh = true;
+        const historyMap = {};
+        let chartInstance = null;
+        let chartModal = null;
 
         const formatMoney = (num) => `¥ ${Number(num).toFixed(2)}`;
         const formatPercent = (num) => `${num > 0 ? '+' : ''}${Number(num).toFixed(2)}%`;
@@ -283,7 +302,9 @@
             tbody.innerHTML = filtered.map(item => `
                 <tr>
                     <td>
-                        <div class="fw-semibold">${item.name}</div>
+                        <button class="btn btn-link text-start text-decoration-none text-light p-0 fw-semibold" onclick="openChart('${item.code}')">
+                            ${item.name}
+                        </button>
                         <div class="text-secondary small">${item.code}<span class="badge-source">${item.source}</span></div>
                     </td>
                     <td>${formatNumber(item.shares)}</td>
@@ -306,6 +327,16 @@
             const res = await fetch('/api/valuations');
             const data = await res.json();
             cache = data.data || [];
+            const now = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+            cache.forEach(item => {
+                if (!historyMap[item.code]) {
+                    historyMap[item.code] = [];
+                }
+                historyMap[item.code].push({ time: now, value: item.gsz });
+                if (historyMap[item.code].length > 60) {
+                    historyMap[item.code].shift();
+                }
+            });
             updateSummary(data.summary || {});
             renderTable();
             timer = refreshInterval;
@@ -344,7 +375,57 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ code })
             });
+            delete historyMap[code];
             fetchValuations();
+        }
+
+        function openChart(code) {
+            const fund = cache.find(item => item.code === code);
+            const history = historyMap[code] || [];
+            const title = fund ? `${fund.name} (${fund.code}) 净值走势` : '净值走势';
+
+            document.getElementById('chartTitle').textContent = title;
+
+            const labels = history.map(point => point.time);
+            const values = history.map(point => point.value);
+
+            if (!chartModal) {
+                chartModal = new bootstrap.Modal(document.getElementById('chartModal'));
+            }
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            const ctx = document.getElementById('fundChart');
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: '实时净值',
+                        data: values,
+                        borderColor: '#4dc3ff',
+                        backgroundColor: 'rgba(77, 195, 255, 0.15)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { color: '#9aa3b2' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                        y: { ticks: { color: '#9aa3b2' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#f5f7ff' } }
+                    }
+                }
+            });
+
+            chartModal.show();
         }
 
         document.getElementById('fundForm').addEventListener('submit', addFund);
