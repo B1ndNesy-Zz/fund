@@ -72,9 +72,12 @@
         .custom-table th { color: var(--text-sub); font-size: 0.85rem; padding: 15px; font-weight: 500; border: none; }
         .custom-table tr.data-row { background: rgba(255, 255, 255, 0.02); }
         .custom-table tr.data-row:hover { background: rgba(255, 255, 255, 0.05); }
+        .custom-table thead th { position: sticky; top: 0; background: rgba(5, 5, 9, 0.95); backdrop-filter: blur(6px); z-index: 1; }
         .custom-table td { padding: 15px; vertical-align: middle; border: none; }
         .custom-table td:first-child { border-top-left-radius: 12px; border-bottom-left-radius: 12px; }
         .custom-table td:last-child { border-top-right-radius: 12px; border-bottom-right-radius: 12px; }
+        .row-up { box-shadow: inset 4px 0 0 rgba(255, 51, 102, 0.6); }
+        .row-down { box-shadow: inset 4px 0 0 rgba(0, 255, 136, 0.6); }
 
         /* 名字过长省略号 */
         .text-truncate-custom {
@@ -91,6 +94,15 @@
         .btn-tech:hover { background: var(--tech-blue); color: #000; box-shadow: 0 0 15px var(--tech-blue); cursor: pointer; }
         .btn-icon-only { padding: 5px 10px; font-size: 0.8rem; border-color: var(--glass-border); color: var(--text-sub); }
         .btn-icon-only:hover { border-color: var(--tech-blue); color: var(--tech-blue); }
+        .table-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+        .toolbar-group { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+        .toolbar-input { background: #0b0c15; border: 1px solid var(--glass-border); color: #fff; border-radius: 12px; padding: 6px 12px; min-width: 200px; }
+        .toolbar-select { background: #0b0c15; border: 1px solid var(--glass-border); color: #fff; border-radius: 12px; padding: 6px 12px; }
+        .toolbar-select:focus, .toolbar-input:focus { outline: none; border-color: var(--tech-blue); box-shadow: 0 0 5px var(--tech-blue); }
+        .refresh-indicator { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--text-sub); }
+        .refresh-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-sub); box-shadow: 0 0 8px transparent; transition: 0.3s; }
+        .refresh-dot.is-loading { background: var(--tech-blue); box-shadow: 0 0 10px var(--tech-blue); animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); opacity: 0.6; } 50% { transform: scale(1.4); opacity: 1; } 100% { transform: scale(1); opacity: 0.6; } }
 
         /* Modal Styles */
         .modal-content { background-color: #151621; border: 1px solid var(--tech-blue); color: #fff; }
@@ -147,7 +159,34 @@
     </div>
 
     <div class="glass-panel table-container">
-        <h5 class="mb-3 text-white"><i class="fas fa-list-ul me-2 text-blue"></i>持仓明细</h5>
+        <div class="table-toolbar mb-3">
+            <div class="toolbar-group">
+                <h5 class="m-0 text-white"><i class="fas fa-list-ul me-2 text-blue"></i>持仓明细</h5>
+                <span class="badge-tech" id="visible-count">显示 0 / 0</span>
+            </div>
+            <div class="toolbar-group">
+                <input type="text" class="toolbar-input font-num" id="searchInput" placeholder="搜索基金名称 / 代码">
+                <select class="toolbar-select font-num" id="filterSelect">
+                    <option value="all">全部</option>
+                    <option value="up">上涨</option>
+                    <option value="down">下跌</option>
+                    <option value="flat">持平</option>
+                </select>
+                <select class="toolbar-select font-num" id="refreshInterval">
+                    <option value="10">10s</option>
+                    <option value="30" selected>30s</option>
+                    <option value="60">60s</option>
+                </select>
+                <div class="form-check form-switch text-sub m-0">
+                    <input class="form-check-input" type="checkbox" id="autoRefreshToggle" checked>
+                    <label class="form-check-label small" for="autoRefreshToggle">自动刷新</label>
+                </div>
+                <div class="refresh-indicator font-num">
+                    <span class="refresh-dot" id="refreshDot"></span>
+                    <span>更新时间: <span id="last-updated">--</span></span>
+                </div>
+            </div>
+        </div>
         <table class="custom-table">
             <thead>
                 <tr>
@@ -213,12 +252,15 @@
     let privacyMode = localStorage.getItem('privacy_mode') === 'true';
     let cachedData = null;
     let manageModal = null; // 全局 Modal 实例
+    let refreshInterval = 30;
+    let autoRefresh = true;
 
     // 初始化 Modal
     $(document).ready(function() {
         manageModal = new bootstrap.Modal(document.getElementById('manageModal'));
         fetchData();
         updatePrivacyIcons();
+        bindToolbar();
     });
 
     function formatMoney(num) { return parseFloat(num).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -234,6 +276,32 @@
         return 'text-sub';
     }
     function getText(formattedValue) { return privacyMode ? '****' : formattedValue; }
+    function formatTime(date) {
+        return date.toLocaleTimeString('zh-CN', { hour12: false });
+    }
+
+    function bindToolbar() {
+        $('#searchInput').on('input', function() {
+            if (cachedData) renderPage(cachedData);
+        });
+        $('#filterSelect').on('change', function() {
+            if (cachedData) renderPage(cachedData);
+        });
+        $('#refreshInterval').on('change', function() {
+            refreshInterval = parseInt($(this).val(), 10);
+            timer = refreshInterval;
+            $('#countdown').text(timer);
+        });
+        $('#autoRefreshToggle').on('change', function() {
+            autoRefresh = $(this).is(':checked');
+            if (!autoRefresh) {
+                $('#countdown').text('--');
+            } else {
+                timer = refreshInterval;
+                $('#countdown').text(timer);
+            }
+        });
+    }
 
     // --- 管理功能 ---
 
@@ -322,7 +390,19 @@
     // --- 页面渲染 ---
     function renderPage(res) {
         let html = '';
-        res.data.forEach(function(item) {
+        let keyword = $('#searchInput').val().trim().toLowerCase();
+        let filter = $('#filterSelect').val();
+        let filtered = res.data.filter(item => {
+            let matchKeyword = !keyword || item.name.toLowerCase().includes(keyword) || item.code.includes(keyword);
+            let rate = item.gszzl || 0;
+            let matchFilter = true;
+            if (filter === 'up') matchFilter = rate > 0.001;
+            if (filter === 'down') matchFilter = rate < -0.001;
+            if (filter === 'flat') matchFilter = Math.abs(rate) <= 0.001;
+            return matchKeyword && matchFilter;
+        });
+
+        filtered.forEach(function(item) {
             let codeBadge = `<span class="badge-tech font-num me-2">${item.code}</span>`;
             let nameHtml = `${codeBadge}<span class="text-truncate-custom" title="${item.name}">${item.name}</span>`;
 
@@ -338,9 +418,10 @@
             let val_day = getText(formatSign(item.day_profit));
             let val_total = getText(formatSign(item.total_profit));
             let val_market = getText(formatMoney(item.market_value));
+            let rowClass = item.gszzl > 0.001 ? 'row-up' : (item.gszzl < -0.001 ? 'row-down' : '');
 
             html += `
-                <tr class="data-row">
+                <tr class="data-row ${rowClass}">
                     <td>${nameHtml}</td>
                     <td class="font-num text-white">${val_market}</td>
                     <td class="font-num text-white">${val_gsz}</td>
@@ -356,7 +437,15 @@
                 </tr>
             `;
         });
+        if (!html) {
+            html = `
+                <tr class="data-row">
+                    <td colspan="8" class="text-center text-sub">暂无匹配数据</td>
+                </tr>
+            `;
+        }
         $('#fund-list').html(html);
+        $('#visible-count').text(`显示 ${filtered.length} / ${res.data.length}`);
 
         let kpi_day_color = privacyMode ? 'text-white' : getColor(res.summary.total_day_profit);
         let kpi_hold_color = privacyMode ? 'text-white' : getColor(res.summary.total_hold_profit);
@@ -387,27 +476,36 @@
 
     function fetchData(callback) {
         $('#icon-refresh').addClass('fa-spin');
+        $('#refreshDot').addClass('is-loading');
         $.ajax({
             url: '/api/valuations',
             method: 'GET',
             success: function(res) {
                 cachedData = res;
                 renderPage(res);
-                timer = 30;
+                timer = refreshInterval;
+                $('#countdown').text(timer);
+                $('#last-updated').text(formatTime(new Date()));
                 $('#icon-refresh').removeClass('fa-spin');
+                $('#refreshDot').removeClass('is-loading');
                 if (callback) callback();
             },
-            error: function() { $('#icon-refresh').removeClass('fa-spin'); }
+            error: function() {
+                $('#icon-refresh').removeClass('fa-spin');
+                $('#refreshDot').removeClass('is-loading');
+            }
         });
     }
 
     function manualRefresh() {
-        timer = 30; // 重置倒计时
+        timer = refreshInterval; // 重置倒计时
+        $('#countdown').text(timer);
         fetchData();
     }
 
-    let timer = 30;
+    let timer = refreshInterval;
     setInterval(function() {
+        if (!autoRefresh) return;
         timer--;
         if (timer <= 0) fetchData();
         else $('#countdown').text(timer);
