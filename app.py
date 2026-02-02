@@ -116,6 +116,13 @@ def get_best_data(code):
     return eastmoney or sina
 
 
+def get_fund_name(code):
+    data = get_best_data(code)
+    if data and data.get('name'):
+        return data['name']
+    return f"基金{code}"
+
+
 # ----------------------
 # Business logic
 # ----------------------
@@ -211,7 +218,7 @@ def add_fund():
     if not updated:
         holdings.append({
             "code": code,
-            "name": name or f"基金{code}",
+            "name": name or get_fund_name(code),
             "shares": shares,
             "cost": cost
         })
