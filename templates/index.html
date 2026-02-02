@@ -255,6 +255,8 @@
         let cache = [];
         let timer = 30;
         let refreshInterval = 30;
+        let realtimeIntervalId = null;
+        const realtimeIntervalMs = 5000;
         let autoRefresh = true;
         const historyMap = {};
         let chartInstance = null;
@@ -340,6 +342,32 @@
             updateSummary(data.summary || {});
             renderTable();
             timer = refreshInterval;
+        }
+
+        function isTradingTime(date = new Date()) {
+            const hours = date.getHours();
+            const minutes = date.getMinutes();
+            const isWeekday = date.getDay() >= 1 && date.getDay() <= 5;
+            if (!isWeekday) return false;
+            if (hours < 9 || hours > 15) return false;
+            if (hours === 9 && minutes < 30) return false;
+            if (hours === 15 && minutes > 0) return false;
+            return true;
+        }
+
+        function startRealtimeUpdates() {
+            if (realtimeIntervalId) return;
+            realtimeIntervalId = setInterval(() => {
+                if (!autoRefresh) return;
+                if (!isTradingTime()) return;
+                fetchValuations();
+            }, realtimeIntervalMs);
+        }
+
+        function stopRealtimeUpdates() {
+            if (!realtimeIntervalId) return;
+            clearInterval(realtimeIntervalId);
+            realtimeIntervalId = null;
         }
 
         async function addFund(event) {
@@ -438,6 +466,11 @@
         });
         document.getElementById('autoRefresh').addEventListener('change', (e) => {
             autoRefresh = e.target.checked;
+            if (autoRefresh) {
+                startRealtimeUpdates();
+            } else {
+                stopRealtimeUpdates();
+            }
         });
 
         setInterval(() => {
@@ -449,6 +482,7 @@
         }, 1000);
 
         fetchValuations();
+        startRealtimeUpdates();
     </script>
 </body>
 </html>
